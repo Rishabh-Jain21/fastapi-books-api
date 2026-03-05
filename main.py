@@ -10,7 +10,7 @@ def root():
 
 @app.get("/books")
 def get_books():
-    return ["Book 1", "Book 2"]
+    return [{"title": "The Hobbit"}, {"title": "Harry Potter"}]
 
 
 @app.get("/hello")
