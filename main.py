@@ -21,3 +21,8 @@ def get_book(book_id: int):
 @app.get("/hello")
 def say_hello():
     return {"message": "Hello User"}
+
+
+@app.get("/search")
+def search_books(author: str, year: int):
+    return {"author": author, "year": year}
