@@ -1,4 +1,13 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Book(BaseModel):
+    title: str
+    author: str
+    year: int
+    price: float
+
 
 app = FastAPI()
 
@@ -16,6 +25,11 @@ def get_books():
 @app.get("/books/{book_id}")
 def get_book(book_id: int):
     return {"book_id": book_id}
+
+
+@app.post("/books")
+def create_book(book: Book):
+    return {"message": "Book created", "book": book}
 
 
 @app.get("/hello")
