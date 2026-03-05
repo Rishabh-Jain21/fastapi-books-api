@@ -11,3 +11,8 @@ def root():
 @app.get("/books")
 def get_books():
     return ["Book 1", "Book 2"]
+
+
+@app.get("/hello")
+def say_hello():
+    return {"message": "Hello User"}
