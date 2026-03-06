@@ -42,6 +42,37 @@ def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
     return new_book
 
 
+@app.put("/books/{book_id}", response_model=schemas.BookResponse)
+def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db)):
+    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    db_book.title = book.title
+    db_book.author = book.author
+    db_book.year = book.year
+
+    db.commit()
+    db.refresh(db_book)
+
+    return db_book
+
+
+@app.delete("/books/{book_id}")
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+
+    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    db.delete(db_book)
+    db.commit()
+
+    return {"message": "Book deleted successfully"}
+
+
 @app.get("/hello")
 def say_hello():
     return {"message": "Hello User"}
