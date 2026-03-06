@@ -1,6 +1,8 @@
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from database import get_db,engine
+import models
 from database import get_db
 
 
@@ -12,6 +14,7 @@ class Book(BaseModel):
 
 
 app = FastAPI()
+models.Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
