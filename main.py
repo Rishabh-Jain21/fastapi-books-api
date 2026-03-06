@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from database import get_db
 
 
 class Book(BaseModel):
@@ -40,3 +42,8 @@ def say_hello():
 @app.get("/search")
 def search_books(author: str, year: int):
     return {"author": author, "year": year}
+
+
+@app.get("/db-test")
+def db_test(db: Session = Depends(get_db)):
+    return {"message": "DB connected"}
