@@ -14,6 +14,10 @@ def get_books(
     offset: int = Query(0, ge=0),
     author: str | None = Query(None),
     year: int | None = Query(None),
+    search: str | None = Query(
+        None, description="Case insensitive search by title of book"
+    ),
+    sort: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     book_query = db.query(models.Book)
@@ -23,6 +27,16 @@ def get_books(
 
     if year is not None:
         book_query = book_query.filter(models.Book.year == year)
+
+    if search:
+        book_query = book_query.filter(models.Book.title.ilike(f"%{search}%"))
+
+    if sort:
+        if sort.startswith("-"):
+            field = sort[1:]
+            book_query = book_query.order_by(getattr(models.Book, field).desc())
+        else:
+            book_query = book_query.order_by(getattr(models.Book, sort).asc())
 
     books = book_query.offset(offset).limit(limit).all()
 
