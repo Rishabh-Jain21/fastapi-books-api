@@ -6,9 +6,10 @@ import models
 import schemas
 
 router = APIRouter(prefix="/books", tags=["Books"])
+ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
 
 
-@router.get("/", response_model=list[schemas.BookResponse])
+@router.get("/", response_model=schemas.BookListResponse)
 def get_books(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -31,8 +32,6 @@ def get_books(
     if search:
         book_query = book_query.filter(models.Book.title.ilike(f"%{search}%"))
 
-    ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
-
     if sort:
         desc = sort.startswith("-")
         field = sort[1:] if desc else sort
@@ -40,10 +39,19 @@ def get_books(
         if field in ALLOWED_SORT_FIELDS:
             column = getattr(models.Book, field)
             book_query = book_query.order_by(column.desc() if desc else column.asc())
+    else:
+        book_query = book_query.order_by(models.Book.id.asc())
+
+    total = book_query.order_by(None).count()
 
     books = book_query.offset(offset).limit(limit).all()
 
-    return books
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "data": books,
+    }
 
 
 @router.get("/{book_id}", response_model=schemas.BookResponse)

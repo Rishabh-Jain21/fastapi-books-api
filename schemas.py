@@ -12,3 +12,10 @@ class BookResponse(BookCreate):
 
     class Config:
         from_attributes = True
+
+
+class BookListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    data: list[BookResponse]
