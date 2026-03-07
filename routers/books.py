@@ -31,12 +31,15 @@ def get_books(
     if search:
         book_query = book_query.filter(models.Book.title.ilike(f"%{search}%"))
 
+    ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
+
     if sort:
-        if sort.startswith("-"):
-            field = sort[1:]
-            book_query = book_query.order_by(getattr(models.Book, field).desc())
-        else:
-            book_query = book_query.order_by(getattr(models.Book, sort).asc())
+        desc = sort.startswith("-")
+        field = sort[1:] if desc else sort
+
+        if field in ALLOWED_SORT_FIELDS:
+            column = getattr(models.Book, field)
+            book_query = book_query.order_by(column.desc() if desc else column.asc())
 
     books = book_query.offset(offset).limit(limit).all()
 
