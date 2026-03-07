@@ -21,7 +21,7 @@ def get_books(
     sort: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    book_query = db.query(models.Book)
+    book_query = db.query(models.Book).filter(models.Book.is_deleted == False)
 
     if author:
         book_query = book_query.filter(models.Book.author == author)
@@ -58,7 +58,7 @@ def get_books(
 def get_book(book_id: int, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
-    if not book:
+    if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
     return book
@@ -81,7 +81,7 @@ def patch_book(
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
-    if not book:
+    if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
     updated_data = book_updated.model_dump(exclude_unset=True)
@@ -97,7 +97,7 @@ def patch_book(
 def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db)):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
-    if not db_book:
+    if not db_book or db_book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
     db_book.title = book.title
@@ -110,15 +110,13 @@ def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(ge
     return db_book
 
 
-@router.delete("/{book_id}")
+@router.delete("/{book_id}", status_code=204)
 def delete_book(book_id: int, db: Session = Depends(get_db)):
 
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
-    if not db_book:
+    if not db_book or db_book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    db.delete(db_book)
+    db_book.is_deleted = True
     db.commit()
-
-    return {"message": "Book deleted successfully"}
