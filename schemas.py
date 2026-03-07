@@ -19,3 +19,9 @@ class BookListResponse(BaseModel):
     limit: int
     offset: int
     data: list[BookResponse]
+
+
+class BookUpdate(BaseModel):
+    title: str | None = None
+    author: str | None = None
+    year: int | None = None

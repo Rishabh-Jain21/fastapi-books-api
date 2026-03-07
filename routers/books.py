@@ -75,6 +75,24 @@ def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
     return new_book
 
 
+@router.patch("/{book_id}", response_model=schemas.BookResponse)
+def patch_book(
+    book_id: int, book_updated: schemas.BookUpdate, db: Session = Depends(get_db)
+):
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    updated_data = book_updated.model_dump(exclude_unset=True)
+
+    for key, value in updated_data.items():
+        setattr(book, key, value)
+    db.commit()
+    db.refresh(book)
+    return book
+
+
 @router.put("/{book_id}", response_model=schemas.BookResponse)
 def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db)):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
