@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db, engine
@@ -8,12 +8,24 @@ import schemas
 router = APIRouter(prefix="/books", tags=["Books"])
 
 
-
-
-
 @router.get("/", response_model=list[schemas.BookResponse])
-def get_books(db: Session = Depends(get_db)):
-    books = db.query(models.Book).all()
+def get_books(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    author: str | None = Query(None),
+    year: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    book_query = db.query(models.Book)
+
+    if author:
+        book_query = book_query.filter(models.Book.author == author)
+
+    if year is not None:
+        book_query = book_query.filter(models.Book.year == year)
+
+    books = book_query.offset(offset).limit(limit).all()
+
     return books
 
 
@@ -67,6 +79,3 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Book deleted successfully"}
-
-
-
