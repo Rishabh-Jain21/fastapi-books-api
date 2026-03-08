@@ -120,3 +120,33 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
 
     db_book.is_deleted = True
     db.commit()
+
+
+@router.post("/{book_id}/reviews", response_model=schemas.ReviewResponse)
+def create_review(
+    book_id: int, review: schemas.ReviewCreate, db: Session = Depends(get_db)
+):
+    book = db.get(models.Book, book_id)
+
+    if not book or book.is_deleted:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    book_review = models.Review(
+        book_id=book_id, rating=review.rating, comment=review.comment
+    )
+    db.add(book_review)
+    db.commit()
+    db.refresh(book_review)
+    return book_review
+
+
+@router.get("/{book_id}/reviews", response_model=list[schemas.ReviewResponse])
+def get_book_reviews(book_id: int, db: Session = Depends(get_db)):
+    book = db.get(models.Book, book_id)
+
+    if not book or book.is_deleted:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    reviews = db.query(models.Review).filter(models.Review.book_id == book_id).all()
+
+    return reviews

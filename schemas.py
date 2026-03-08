@@ -25,3 +25,17 @@ class BookUpdate(BaseModel):
     title: str | None = None
     author: str | None = None
     year: int | None = None
+
+
+class ReviewCreate(BaseModel):
+    rating: int
+    comment: str
+
+
+class ReviewResponse(BaseModel):
+    id: int
+    rating: int
+    comment: str
+
+    class Config:
+        from_attributes = True
