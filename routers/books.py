@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from database import get_db, engine
+from database import get_db
 import models
 import schemas
 
@@ -147,6 +146,12 @@ def get_book_reviews(book_id: int, db: Session = Depends(get_db)):
     if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    reviews = db.query(models.Review).filter(models.Review.book_id == book_id).all()
+    reviews = (
+        db.query(models.Review)
+        .filter(
+            (models.Review.book_id == book_id) & (models.Review.is_deleted == False)
+        )
+        .all()
+    )
 
     return reviews

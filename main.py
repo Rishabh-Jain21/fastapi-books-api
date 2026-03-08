@@ -1,11 +1,12 @@
 from fastapi import Depends, FastAPI
-from database import get_db,Base,engine
-from routers import books
+from database import get_db, Base, engine
+from routers import books, reviews
 from sqlalchemy.orm import Session
 
 app = FastAPI()
 
 app.include_router(books.router)
+app.include_router(reviews.router)
 
 Base.metadata.create_all(bind=engine)
 

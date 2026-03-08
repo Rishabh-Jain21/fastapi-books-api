@@ -24,5 +24,6 @@ class Review(Base):
     book_id: Mapped[int] = mapped_column(ForeignKey("books.id"))
     rating: Mapped[float] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(String)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
     book: Mapped[Book] = relationship(back_populates="reviews")
