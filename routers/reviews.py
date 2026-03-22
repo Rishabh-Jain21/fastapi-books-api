@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
 @router.get("/{review_id}")
-def get_review(review_id: int, db: Session = Depends(get_db)):
+def get_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
     review = db.get(models.Review, review_id)
 
     if not review or review.is_deleted:
@@ -18,7 +18,9 @@ def get_review(review_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{review_id}")
 def patch_review(
-    review_id: int, payload: schemas.ReviewUpdate, db: Session = Depends(get_db)
+    payload: schemas.ReviewUpdate,
+    db: Session = Depends(get_db),
+    review_id: int = Path(gt=0),
 ):
     review = db.get(models.Review, review_id)
 
@@ -36,7 +38,7 @@ def patch_review(
 
 
 @router.delete("/{review_id}", status_code=204)
-def delete_review(review_id: int, db: Session = Depends(get_db)):
+def delete_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
     review = db.get(models.Review, review_id)
 
     if not review:

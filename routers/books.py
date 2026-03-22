@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -54,7 +54,7 @@ def get_books(
 
 
 @router.get("/{book_id}", response_model=schemas.BookResponse)
-def get_book(book_id: int, db: Session = Depends(get_db)):
+def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not book or book.is_deleted:
@@ -76,7 +76,9 @@ def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
 
 @router.patch("/{book_id}", response_model=schemas.BookResponse)
 def patch_book(
-    book_id: int, book_updated: schemas.BookUpdate, db: Session = Depends(get_db)
+    book_updated: schemas.BookUpdate,
+    book_id: int = Path(gt=0),
+    db: Session = Depends(get_db),
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -93,7 +95,9 @@ def patch_book(
 
 
 @router.put("/{book_id}", response_model=schemas.BookResponse)
-def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db)):
+def update_book(
+    book: schemas.BookCreate, book_id: int = Path(gt=0), db: Session = Depends(get_db)
+):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not db_book or db_book.is_deleted:
@@ -110,7 +114,7 @@ def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(ge
 
 
 @router.delete("/{book_id}", status_code=204)
-def delete_book(book_id: int, db: Session = Depends(get_db)):
+def delete_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
 
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -123,7 +127,9 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{book_id}/reviews", response_model=schemas.ReviewResponse)
 def create_review(
-    book_id: int, review: schemas.ReviewCreate, db: Session = Depends(get_db)
+    review: schemas.ReviewCreate,
+    db: Session = Depends(get_db),
+    book_id: int = Path(gt=0),
 ):
     book = db.get(models.Book, book_id)
 
@@ -140,7 +146,7 @@ def create_review(
 
 
 @router.get("/{book_id}/reviews", response_model=list[schemas.ReviewResponse])
-def get_book_reviews(book_id: int, db: Session = Depends(get_db)):
+def get_book_reviews(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
     book = db.get(models.Book, book_id)
 
     if not book or book.is_deleted:
