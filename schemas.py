@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BookCreate(BaseModel):
@@ -6,12 +6,21 @@ class BookCreate(BaseModel):
     author: str
     year: int
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "To Kill a Mockingbird",
+                "author": "Harper Lee",
+                "year": 1960,
+            }
+        }
+    )
+
 
 class BookResponse(BookCreate):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, json_schema_extra=None)
 
 
 class BookListResponse(BaseModel):
@@ -31,14 +40,17 @@ class ReviewCreate(BaseModel):
     rating: int
     comment: str
 
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"rating": 4, "comment": "This is a good book"}}
+    )
+
 
 class ReviewResponse(BaseModel):
     id: int
     rating: int
     comment: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReviewUpdate(BaseModel):
