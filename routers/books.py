@@ -22,14 +22,16 @@ def get_books(
 ):
     book_query = db.query(models.Book).filter(models.Book.is_deleted == False)
 
-    if author:
+    if author is not None:
         book_query = book_query.filter(models.Book.author == author)
 
     if year is not None:
         book_query = book_query.filter(models.Book.year == year)
 
     if search:
-        book_query = book_query.filter(models.Book.title.ilike(f"%{search}%"))
+        search = search.strip()
+        if search:
+            book_query = book_query.filter(models.Book.title.ilike(f"%{search}%"))
 
     if sort:
         desc = sort.startswith("-")
@@ -38,6 +40,8 @@ def get_books(
         if field in ALLOWED_SORT_FIELDS:
             column = getattr(models.Book, field)
             book_query = book_query.order_by(column.desc() if desc else column.asc())
+        else:
+            book_query = book_query.order_by(models.Book.id.asc())
     else:
         book_query = book_query.order_by(models.Book.id.asc())
 
@@ -145,19 +149,52 @@ def create_review(
     return book_review
 
 
-@router.get("/{book_id}/reviews", response_model=list[schemas.ReviewResponse])
-def get_book_reviews(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
+@router.get("/{book_id}/reviews", response_model=schemas.ReviewListResponse)
+def get_book_reviews(
+    book_id: int = Path(gt=0),
+    db: Session = Depends(get_db),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    rating: int | None = None,
+    search: str | None = None,
+    sort: str | None = None,
+):
     book = db.get(models.Book, book_id)
 
     if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    reviews = (
-        db.query(models.Review)
-        .filter(
-            (models.Review.book_id == book_id) & (models.Review.is_deleted == False)
-        )
-        .all()
+    review_query = db.query(models.Review).filter(
+        (models.Review.book_id == book_id) & (models.Review.is_deleted == False)
     )
 
-    return reviews
+    if rating is not None:
+        review_query = review_query.filter(models.Review.rating == rating)
+
+    if search:
+        review_query = review_query.filter(models.Review.comment.ilike(f"%{search}%"))
+
+    if sort:
+        desc = sort.startswith("-")
+        field = sort[1:] if desc else sort
+
+        if field in {"rating"}:
+            column = getattr(models.Review, field)
+            review_query = review_query.order_by(
+                column.desc() if desc else column.asc()
+            )
+        else:
+            review_query = review_query.order_by(models.Review.id.asc())
+    else:
+        review_query = review_query.order_by(models.Review.id.asc())
+
+    total = review_query.order_by(None).count()
+
+    reviews = review_query.offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "data": reviews,
+    }

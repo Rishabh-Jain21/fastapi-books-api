@@ -53,6 +53,13 @@ class ReviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ReviewListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    data: list[ReviewResponse]
+
+
 class ReviewUpdate(BaseModel):
     rating: int | None = None
     comment: str | None = None
