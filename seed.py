@@ -1,8 +1,10 @@
 import random
 
 from faker import Faker
-from database import SessionLocal
+from database import SessionLocal, engine
 import models
+
+models.Base.metadata.create_all(bind=engine)
 
 
 review_templates: dict[int, list[str]] = {
@@ -35,6 +37,22 @@ review_templates: dict[int, list[str]] = {
 
 fake = Faker()
 db = SessionLocal()
+
+users = []
+
+for _ in range(10):
+    user = models.User(
+        username=fake.user_name(),
+        email=fake.unique.email(),
+        password_hash=(
+            "abcd1234"
+        ),  # For seeding storing raw password , will add hashing later
+    )
+    users.append(user)
+
+    db.add_all(users)
+    db.commit()
+
 books = []
 
 for _ in range(10):
@@ -57,6 +75,7 @@ for _ in range(25):
         book_id=random.randint(1, 10),
         rating=book_rating,
         comment=random.choice(review_templates[book_rating]),
+        user_id=random.randint(1, 10),  # Associating comment to a user
     )
     book_reviews.append(book_review)
 
