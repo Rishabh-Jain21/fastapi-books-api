@@ -3,6 +3,7 @@ import random
 from faker import Faker
 from database import SessionLocal, engine
 import models
+from auth import hash_password
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -44,9 +45,7 @@ for _ in range(10):
     user = models.User(
         username=fake.user_name(),
         email=fake.unique.email(),
-        password_hash=(
-            "abcd1234"
-        ),  # For seeding storing raw password , will add hashing later
+        password_hash=hash_password("abc123"),
     )
     users.append(user)
 
