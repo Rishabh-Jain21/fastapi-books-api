@@ -27,7 +27,7 @@ def create_user(user: schemas.CreateUserRequest, db: Session = Depends(get_db)):
 
     create_user_model = models.User(
         email=user.email,
-        username=user.email,
+        username=user.username,
         password_hash=hash_password(user.password),
         role=user.role,
         is_active=True,
