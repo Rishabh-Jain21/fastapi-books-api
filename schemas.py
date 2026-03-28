@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class BookCreate(BaseModel):
@@ -63,3 +63,10 @@ class ReviewListResponse(BaseModel):
 class ReviewUpdate(BaseModel):
     rating: int | None = None
     comment: str | None = None
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    role: str
