@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
-from auth import get_current_user
+from auth import get_current_user, require_role
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -72,13 +72,8 @@ def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
 def create_book(
     book: schemas.BookCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.CurrentUser = Depends(get_current_user),
+    current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
-        )
-
     new_book = models.Book(title=book.title, author=book.author, year=book.year)
 
     db.add(new_book)
@@ -93,17 +88,12 @@ def patch_book(
     book_updated: schemas.BookUpdate,
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
-    current_user: schemas.CurrentUser = Depends(get_current_user),
+    current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
-
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
-        )
 
     updated_data = book_updated.model_dump(exclude_unset=True)
 
@@ -119,7 +109,7 @@ def update_book(
     book: schemas.BookCreate,
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
-    current_user: schemas.CurrentUser = Depends(get_current_user),
+    current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -145,7 +135,7 @@ def update_book(
 def delete_book(
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
-    current_user: schemas.CurrentUser = Depends(get_current_user),
+    current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
 
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
@@ -167,7 +157,7 @@ def create_review(
     review: schemas.ReviewCreate,
     db: Session = Depends(get_db),
     book_id: int = Path(gt=0),
-    current_user: schemas.CurrentUser = Depends(get_current_user),
+    current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
     book = db.get(models.Book, book_id)
 
