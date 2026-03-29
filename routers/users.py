@@ -30,7 +30,6 @@ def create_user(user: schemas.CreateUserRequest, db: Session = Depends(get_db)):
         email=user.email,
         username=user.username,
         password_hash=hash_password(user.password),
-        role=user.role,
         is_active=True,
     )
 
@@ -56,7 +55,8 @@ def login_for_access_token(
     token = create_access_token(
         user.username,
         user_id=user.id,
+        role=user.role,
         expires_minutes=settings.access_token_expire_minutes,
     )
 
-    return schemas.Token(access_token=token,token_type="bearer")
+    return schemas.Token(access_token=token, token_type="bearer")

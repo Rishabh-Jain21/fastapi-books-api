@@ -74,6 +74,11 @@ def create_book(
     db: Session = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
+        )
+
     new_book = models.Book(title=book.title, author=book.author, year=book.year)
 
     db.add(new_book)
@@ -94,6 +99,11 @@ def patch_book(
 
     if not book or book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
+
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
+        )
 
     updated_data = book_updated.model_dump(exclude_unset=True)
 
@@ -116,6 +126,11 @@ def update_book(
     if not db_book or db_book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
+        )
+
     db_book.title = book.title
     db_book.author = book.author
     db_book.year = book.year
@@ -137,6 +152,11 @@ def delete_book(
 
     if not db_book or db_book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
+
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
+        )
 
     db_book.is_deleted = True
     db.commit()

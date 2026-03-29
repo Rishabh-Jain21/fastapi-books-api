@@ -17,7 +17,7 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    role: Mapped[str] = mapped_column(String, default="")
+    role: Mapped[str] = mapped_column(String, default="general")
 
     reviews: Mapped[list[Review]] = relationship(
         "Review", back_populates="user", cascade="all, delete-orphan"

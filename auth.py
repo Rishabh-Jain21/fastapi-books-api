@@ -21,8 +21,13 @@ def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(username: str, user_id: int, expires_minutes: int):
-    encode = {"sub": username, "user_id": user_id}
+def create_access_token(
+    username: str,
+    user_id: int,
+    role: str,
+    expires_minutes: int,
+):
+    encode = {"sub": username, "user_id": user_id, "role": role}
     expires = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
     encode.update({"exp": expires})
     return jwt.encode(
@@ -37,12 +42,13 @@ def get_current_user(token: str = Depends(oauth_bearer)) -> Optional[CurrentUser
         payload = jwt.decode(token, key=settings.secret_key.get_secret_value())
         username: str | None = payload.get("sub")
         user_id: int | None = payload.get("user_id")
+        user_role: str = payload.get("role", "")
         if not username or not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate Credentials",
             )
-        return CurrentUser(username=username, user_id=user_id)
+        return CurrentUser(username=username, user_id=user_id, role=user_role)
 
     except JWTError:
         raise HTTPException(

@@ -39,7 +39,15 @@ review_templates: dict[int, list[str]] = {
 fake = Faker()
 db = SessionLocal()
 
-users = []
+# Admin user with username and password "admin"
+admin_user = models.User(
+    username="admin",
+    email="admin@gmail.com",
+    password_hash=hash_password("admin"),
+    role="admin",
+)
+
+users = [admin_user]
 
 for _ in range(10):
     user = models.User(

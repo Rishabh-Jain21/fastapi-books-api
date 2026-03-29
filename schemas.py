@@ -70,7 +70,6 @@ class CreateUserRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
-    role: str
 
 
 class Token(BaseModel):
@@ -83,3 +82,4 @@ class CurrentUser(BaseModel):
 
     username: str
     user_id: int
+    role: str
