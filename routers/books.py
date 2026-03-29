@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
+from auth import get_current_user
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -68,7 +69,11 @@ def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=schemas.BookResponse)
-def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
+def create_book(
+    book: schemas.BookCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
+):
     new_book = models.Book(title=book.title, author=book.author, year=book.year)
 
     db.add(new_book)
@@ -83,6 +88,7 @@ def patch_book(
     book_updated: schemas.BookUpdate,
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -100,7 +106,10 @@ def patch_book(
 
 @router.put("/{book_id}", response_model=schemas.BookResponse)
 def update_book(
-    book: schemas.BookCreate, book_id: int = Path(gt=0), db: Session = Depends(get_db)
+    book: schemas.BookCreate,
+    book_id: int = Path(gt=0),
+    db: Session = Depends(get_db),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -118,7 +127,11 @@ def update_book(
 
 
 @router.delete("/{book_id}", status_code=204)
-def delete_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
+def delete_book(
+    book_id: int = Path(gt=0),
+    db: Session = Depends(get_db),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
+):
 
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
@@ -134,6 +147,7 @@ def create_review(
     review: schemas.ReviewCreate,
     db: Session = Depends(get_db),
     book_id: int = Path(gt=0),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
     book = db.get(models.Book, book_id)
 
@@ -141,7 +155,10 @@ def create_review(
         raise HTTPException(status_code=404, detail="Book not found")
 
     book_review = models.Review(
-        book_id=book_id, rating=review.rating, comment=review.comment
+        book_id=book_id,
+        rating=review.rating,
+        comment=review.comment,
+        user_id=current_user.user_id,
     )
     db.add(book_review)
     db.commit()

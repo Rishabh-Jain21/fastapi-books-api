@@ -49,6 +49,7 @@ class ReviewResponse(BaseModel):
     id: int
     rating: int
     comment: str
+    user_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -71,6 +72,14 @@ class CreateUserRequest(BaseModel):
     password: str
     role: str
 
+
 class Token(BaseModel):
-    access_token:str
-    token_type:str
+    access_token: str
+    token_type: str
+
+
+class CurrentUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    username: str
+    user_id: int

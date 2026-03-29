@@ -1,9 +1,16 @@
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status
 from passlib.context import CryptContext
 from datetime import timedelta, datetime, timezone
 from config import settings
-from jose import jwt
+from jose import jwt, JWTError
+from fastapi.security import OAuth2PasswordBearer
+from schemas import CurrentUser
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+oauth_bearer = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 
 def hash_password(password: str):
@@ -15,7 +22,7 @@ def verify_password(plain, hashed):
 
 
 def create_access_token(username: str, user_id: int, expires_minutes: int):
-    encode = {"sub": username, "id": user_id}
+    encode = {"sub": username, "user_id": user_id}
     expires = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
     encode.update({"exp": expires})
     return jwt.encode(
@@ -23,3 +30,22 @@ def create_access_token(username: str, user_id: int, expires_minutes: int):
         key=settings.secret_key.get_secret_value(),
         algorithm=settings.algorithm,
     )
+
+
+def get_current_user(token: str = Depends(oauth_bearer)) -> Optional[CurrentUser]:
+    try:
+        payload = jwt.decode(token, key=settings.secret_key.get_secret_value())
+        username: str | None = payload.get("sub")
+        user_id: int | None = payload.get("user_id")
+        if not username or not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate Credentials",
+            )
+        return CurrentUser(username=username, user_id=user_id)
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate Credentials",
+        )
