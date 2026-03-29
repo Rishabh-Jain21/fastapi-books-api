@@ -45,11 +45,18 @@ class ReviewCreate(BaseModel):
     )
 
 
+class ReviewUserResponse(BaseModel):
+    username: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ReviewResponse(BaseModel):
     id: int
     rating: int
     comment: str
-    user_id: int
+    user: ReviewUserResponse
 
     model_config = ConfigDict(from_attributes=True)
 

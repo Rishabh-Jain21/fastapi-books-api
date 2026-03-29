@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, require_role
+from auth import require_role
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -143,11 +143,6 @@ def delete_book(
     if not db_book or db_book.is_deleted:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not Authorized"
-        )
-
     db_book.is_deleted = True
     db.commit()
 
@@ -217,7 +212,12 @@ def get_book_reviews(
 
     total = review_query.order_by(None).count()
 
-    reviews = review_query.offset(offset).limit(limit).all()
+    reviews = (
+        review_query.offset(offset)
+        .limit(limit)
+        .options(selectinload(models.Review.user))
+        .all()
+    )
 
     return {
         "total": total,
