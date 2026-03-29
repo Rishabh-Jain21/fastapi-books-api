@@ -60,7 +60,9 @@ def get_current_user(token: str = Depends(oauth_bearer)) -> Optional[CurrentUser
 def require_role(*roles: str):
     def checker(current_user: CurrentUser = Depends(get_current_user)):
         if current_user.role not in roles:
-            raise HTTPException(status_code=403, detail="Forbidden")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
         return current_user
 
     return checker
@@ -68,4 +70,4 @@ def require_role(*roles: str):
 
 def check_owner_or_admin(resource_user_id: int, current_user: CurrentUser):
     if resource_user_id != current_user.user_id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")

@@ -9,7 +9,9 @@ router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
 
 
-@router.get("/", response_model=schemas.BookListResponse)
+@router.get(
+    "/", response_model=schemas.BookListResponse, status_code=status.HTTP_200_OK
+)
 def get_books(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -58,17 +60,23 @@ def get_books(
     }
 
 
-@router.get("/{book_id}", response_model=schemas.BookResponse)
+@router.get(
+    "/{book_id}", response_model=schemas.BookResponse, status_code=status.HTTP_200_OK
+)
 def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not book or book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     return book
 
 
-@router.post("/", response_model=schemas.BookResponse)
+@router.post(
+    "/", response_model=schemas.BookResponse, status_code=status.HTTP_201_CREATED
+)
 def create_book(
     book: schemas.BookCreate,
     db: Session = Depends(get_db),
@@ -83,7 +91,11 @@ def create_book(
     return new_book
 
 
-@router.patch("/{book_id}", response_model=schemas.BookResponse)
+@router.patch(
+    "/{book_id}",
+    response_model=schemas.BookResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def patch_book(
     book_updated: schemas.BookUpdate,
     book_id: int = Path(gt=0),
@@ -93,7 +105,9 @@ def patch_book(
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not book or book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     updated_data = book_updated.model_dump(exclude_unset=True)
 
@@ -104,7 +118,11 @@ def patch_book(
     return book
 
 
-@router.put("/{book_id}", response_model=schemas.BookResponse)
+@router.put(
+    "/{book_id}",
+    response_model=schemas.BookResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def update_book(
     book: schemas.BookCreate,
     book_id: int = Path(gt=0),
@@ -114,7 +132,9 @@ def update_book(
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not db_book or db_book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     if current_user.role != "admin":
         raise HTTPException(
@@ -131,7 +151,7 @@ def update_book(
     return db_book
 
 
-@router.delete("/{book_id}", status_code=204)
+@router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
@@ -141,13 +161,19 @@ def delete_book(
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
     if not db_book or db_book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     db_book.is_deleted = True
     db.commit()
 
 
-@router.post("/{book_id}/reviews", response_model=schemas.ReviewResponse)
+@router.post(
+    "/{book_id}/reviews",
+    response_model=schemas.ReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_review(
     review: schemas.ReviewCreate,
     db: Session = Depends(get_db),
@@ -157,7 +183,9 @@ def create_review(
     book = db.get(models.Book, book_id)
 
     if not book or book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     book_review = models.Review(
         book_id=book_id,
@@ -171,7 +199,11 @@ def create_review(
     return book_review
 
 
-@router.get("/{book_id}/reviews", response_model=schemas.ReviewListResponse)
+@router.get(
+    "/{book_id}/reviews",
+    response_model=schemas.ReviewListResponse,
+    status_code=status.HTTP_200_OK,
+)
 def get_book_reviews(
     book_id: int = Path(gt=0),
     db: Session = Depends(get_db),
@@ -184,7 +216,9 @@ def get_book_reviews(
     book = db.get(models.Book, book_id)
 
     if not book or book.is_deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
 
     review_query = db.query(models.Review).filter(
         (models.Review.book_id == book_id) & (models.Review.is_deleted == False)

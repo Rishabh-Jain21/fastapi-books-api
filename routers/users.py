@@ -39,7 +39,7 @@ def create_user(user: schemas.CreateUserRequest, db: Session = Depends(get_db)):
     return create_user_model
 
 
-@router.post("/token", response_model=schemas.Token)
+@router.post("/token", response_model=schemas.Token, status_code=status.HTTP_200_OK)
 def login_for_access_token(
     db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ):

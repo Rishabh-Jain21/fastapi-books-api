@@ -8,7 +8,11 @@ from auth import get_current_user, check_owner_or_admin
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
-@router.get("/{review_id}", response_model=schemas.ReviewResponse)
+@router.get(
+    "/{review_id}",
+    response_model=schemas.ReviewResponse,
+    status_code=status.HTTP_200_OK,
+)
 def get_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
     review = (
         db.query(models.Review)
@@ -17,12 +21,18 @@ def get_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
     )
 
     if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+        )
 
     return review
 
 
-@router.patch("/{review_id}", response_model=schemas.ReviewResponse)
+@router.patch(
+    "/{review_id}",
+    response_model=schemas.ReviewResponse,
+    status_code=status.HTTP_200_OK,
+)
 def patch_review(
     payload: schemas.ReviewUpdate,
     db: Session = Depends(get_db),
@@ -36,7 +46,9 @@ def patch_review(
     )
 
     if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+        )
 
     check_owner_or_admin(review.user_id, current_user)
 
@@ -51,7 +63,7 @@ def patch_review(
     return review
 
 
-@router.delete("/{review_id}", status_code=204)
+@router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(
     review_id: int = Path(gt=0),
     db: Session = Depends(get_db),
@@ -64,7 +76,9 @@ def delete_review(
     )
 
     if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+        )
 
     check_owner_or_admin(review.user_id, current_user)
 
