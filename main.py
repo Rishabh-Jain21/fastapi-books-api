@@ -3,7 +3,10 @@ from database import get_db, Base, engine
 from routers import books, reviews, users
 from sqlalchemy.orm import Session
 
-app = FastAPI()
+app = FastAPI(
+    title="Books API",
+    description="Api where admin can add books and authenticated users can review the books",
+)
 
 app.include_router(books.router)
 app.include_router(reviews.router)
