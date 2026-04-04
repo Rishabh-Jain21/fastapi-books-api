@@ -19,6 +19,8 @@ class BookCreate(BaseModel):
 
 class BookResponse(BookCreate):
     id: int
+    review_count: int
+    average_rating: float | None
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra=None)
 
@@ -28,6 +30,7 @@ class BookListResponse(BaseModel):
     limit: int
     offset: int
     data: list[BookResponse]
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookUpdate(BaseModel):

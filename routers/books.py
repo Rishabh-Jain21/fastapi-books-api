@@ -4,6 +4,7 @@ from database import get_db
 import models
 import schemas
 from auth import require_role
+from sqlalchemy import func
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -23,7 +24,23 @@ def get_books(
     sort: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    book_query = db.query(models.Book).filter(models.Book.is_deleted == False)
+    book_query = (
+        db.query(
+            models.Book.id,
+            models.Book.title,
+            models.Book.author,
+            models.Book.year,
+            func.count(models.Review.id).label("review_count"),
+            func.coalesce(func.avg(models.Review.rating), 0).label("average_rating"),
+        )
+        .filter(models.Book.is_deleted == False)
+        .outerjoin(
+            models.Review,
+            (models.Review.book_id == models.Book.id)
+            & (models.Review.is_deleted == False),
+        )
+        .group_by(models.Book.id)
+    )
 
     if author is not None:
         book_query = book_query.filter(models.Book.author == author)
@@ -51,7 +68,6 @@ def get_books(
     total = book_query.order_by(None).count()
 
     books = book_query.offset(offset).limit(limit).all()
-
     return {
         "total": total,
         "limit": limit,
@@ -64,9 +80,27 @@ def get_books(
     "/{book_id}", response_model=schemas.BookResponse, status_code=status.HTTP_200_OK
 )
 def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    book = (
+        db.query(
+            models.Book.id,
+            models.Book.title,
+            models.Book.author,
+            models.Book.year,
+            func.count(models.Review.id).label("review_count"),
+            func.coalesce(func.avg(models.Review.rating), 0).label("average_rating"),
+        )
+        .filter(models.Book.is_deleted == False, models.Book.id == book_id)
+        .outerjoin(
+            models.Review,
+            (models.Review.book_id == models.Book.id)
+            & (models.Review.is_deleted == False),
+        )
+        .group_by(models.Book.id)
+        .first()
+    )
+    # book = db.query(models.Book).filter(models.Book.id == book_id).first()
 
-    if not book or book.is_deleted:
+    if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
