@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 import models
 import schemas
-from auth import require_role
-from sqlalchemy import func
+from auth import get_current_user, require_role
+from sqlalchemy import func, select
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -13,7 +14,7 @@ ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
 @router.get(
     "/", response_model=schemas.BookListResponse, status_code=status.HTTP_200_OK
 )
-def get_books(
+async def get_books(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     author: str | None = Query(None),
@@ -22,10 +23,10 @@ def get_books(
         None, description="Case insensitive search by title of book"
     ),
     sort: str | None = Query(None),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     book_query = (
-        db.query(
+        select(
             models.Book.id,
             models.Book.title,
             models.Book.author,
@@ -65,9 +66,16 @@ def get_books(
     else:
         book_query = book_query.order_by(models.Book.id.asc())
 
-    total = book_query.order_by(None).count()
+    count_result = await db.execute(
+        select(func.count()).select_from(book_query.order_by(None).subquery())
+    )
 
-    books = book_query.offset(offset).limit(limit).all()
+    total = count_result.scalar_one() or 0
+
+    books_result = await db.execute(book_query.offset(offset).limit(limit))
+
+    books = books_result.all()
+
     return {
         "total": total,
         "limit": limit,
@@ -79,9 +87,9 @@ def get_books(
 @router.get(
     "/{book_id}", response_model=schemas.BookResponse, status_code=status.HTTP_200_OK
 )
-def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
-    book = (
-        db.query(
+async def get_book(book_id: int = Path(gt=0), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(
             models.Book.id,
             models.Book.title,
             models.Book.author,
@@ -96,9 +104,9 @@ def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
             & (models.Review.is_deleted == False),
         )
         .group_by(models.Book.id)
-        .first()
     )
-    # book = db.query(models.Book).filter(models.Book.id == book_id).first()
+
+    book = result.one_or_none()
 
     if not book:
         raise HTTPException(
@@ -111,16 +119,16 @@ def get_book(book_id: int = Path(gt=0), db: Session = Depends(get_db)):
 @router.post(
     "/", response_model=schemas.BookResponse, status_code=status.HTTP_201_CREATED
 )
-def create_book(
+async def create_book(
     book: schemas.BookCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
     new_book = models.Book(title=book.title, author=book.author, year=book.year)
 
     db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
+    await db.commit()
+    await db.refresh(new_book)
 
     return new_book
 
@@ -130,13 +138,15 @@ def create_book(
     response_model=schemas.BookResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def patch_book(
+async def patch_book(
     book_updated: schemas.BookUpdate,
     book_id: int = Path(gt=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    result = await db.execute(select(models.Book).filter(models.Book.id == book_id))
+
+    book = result.scalars().first()
 
     if not book or book.is_deleted:
         raise HTTPException(
@@ -147,8 +157,8 @@ def patch_book(
 
     for key, value in updated_data.items():
         setattr(book, key, value)
-    db.commit()
-    db.refresh(book)
+    await db.commit()
+    await db.refresh(book)
     return book
 
 
@@ -157,13 +167,15 @@ def patch_book(
     response_model=schemas.BookResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def update_book(
+async def update_book(
     book: schemas.BookCreate,
     book_id: int = Path(gt=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
-    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    result = await db.execute(select(models.Book).filter(models.Book.id == book_id))
+
+    db_book = result.scalars().first()
 
     if not db_book or db_book.is_deleted:
         raise HTTPException(
@@ -179,28 +191,29 @@ def update_book(
     db_book.author = book.author
     db_book.year = book.year
 
-    db.commit()
-    db.refresh(db_book)
+    await db.commit()
+    await db.refresh(db_book)
 
     return db_book
 
 
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_book(
+async def delete_book(
     book_id: int = Path(gt=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(require_role("admin")),
 ):
 
-    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    result = await db.execute(select(models.Book).filter(models.Book.id == book_id))
 
+    db_book = result.scalars().first()
     if not db_book or db_book.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     db_book.is_deleted = True
-    db.commit()
+    await db.commit()
 
 
 @router.post(
@@ -208,14 +221,13 @@ def delete_book(
     response_model=schemas.ReviewResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_review(
+async def create_review(
     review: schemas.ReviewCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     book_id: int = Path(gt=0),
-    current_user: schemas.CurrentUser = Depends(require_role("admin")),
+    current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
-    book = db.get(models.Book, book_id)
-
+    book = await db.get(models.Book, book_id)
     if not book or book.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
@@ -228,8 +240,8 @@ def create_review(
         user_id=current_user.user_id,
     )
     db.add(book_review)
-    db.commit()
-    db.refresh(book_review)
+    await db.commit()
+    await db.refresh(book_review, attribute_names=["user"])
     return book_review
 
 
@@ -238,23 +250,23 @@ def create_review(
     response_model=schemas.ReviewListResponse,
     status_code=status.HTTP_200_OK,
 )
-def get_book_reviews(
+async def get_book_reviews(
     book_id: int = Path(gt=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     rating: int | None = None,
     search: str | None = None,
     sort: str | None = None,
 ):
-    book = db.get(models.Book, book_id)
+    book = await db.get(models.Book, book_id)
 
     if not book or book.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    review_query = db.query(models.Review).filter(
+    review_query = select(models.Review).filter(
         (models.Review.book_id == book_id) & (models.Review.is_deleted == False)
     )
 
@@ -278,15 +290,18 @@ def get_book_reviews(
     else:
         review_query = review_query.order_by(models.Review.id.asc())
 
-    total = review_query.order_by(None).count()
+    total_result = await db.execute(
+        select(func.count()).select_from(review_query.order_by(None).subquery())
+    )
 
-    reviews = (
+    total = total_result.scalar_one()
+
+    reviews_result = await db.execute(
         review_query.offset(offset)
         .limit(limit)
         .options(selectinload(models.Review.user))
-        .all()
     )
-
+    reviews = reviews_result.scalars().all()
     return {
         "total": total,
         "limit": limit,

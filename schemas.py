@@ -19,8 +19,8 @@ class BookCreate(BaseModel):
 
 class BookResponse(BookCreate):
     id: int
-    review_count: int
-    average_rating: float | None
+    review_count: int = 0
+    average_rating: float = 0
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra=None)
 

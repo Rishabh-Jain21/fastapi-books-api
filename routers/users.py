@@ -3,22 +3,24 @@ from fastapi.security import OAuth2PasswordRequestForm
 import schemas
 import models
 from database import get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from auth import hash_password, verify_password, create_access_token
 from config import settings
+from sqlalchemy import select
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_user(user: schemas.CreateUserRequest, db: Session = Depends(get_db)):
-    existing_user = (
-        db.query(models.User)
-        .filter(
+async def create_user(
+    user: schemas.CreateUserRequest, db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(models.User).filter(
             (models.User.username == user.username) | (models.User.email == user.email)
         )
-        .first()
     )
+    existing_user = result.scalar_one_or_none()
 
     if existing_user:
         raise HTTPException(
@@ -34,24 +36,26 @@ def create_user(user: schemas.CreateUserRequest, db: Session = Depends(get_db)):
     )
 
     db.add(create_user_model)
-    db.commit()
+    await db.commit()
 
     return create_user_model
 
 
 @router.post("/token", response_model=schemas.Token, status_code=status.HTTP_200_OK)
-def login_for_access_token(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+async def login_for_access_token(
+    db: AsyncSession = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ):
-    user = (
-        db.query(models.User).filter(models.User.username == form_data.username).first()
+    result = await db.execute(
+        select(models.User).filter(models.User.username == form_data.username)
     )
+
+    user = result.scalar_one_or_none()
+
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-
     token = create_access_token(
         user.username,
         user_id=user.id,

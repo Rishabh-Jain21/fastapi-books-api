@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, status
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 import models
 import schemas
 from auth import get_current_user, check_owner_or_admin
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
@@ -13,12 +15,15 @@ router = APIRouter(prefix="/reviews", tags=["Reviews"])
     response_model=schemas.ReviewResponse,
     status_code=status.HTTP_200_OK,
 )
-def get_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
-    review = (
-        db.query(models.Review)
-        .filter(models.Review.id == review_id, models.Review.is_deleted == False)
-        .first()
+async def get_review(review_id: int = Path(gt=0), db: AsyncSession = Depends(get_db)):
+
+    result = await db.execute(
+        select(models.Review)
+        .where(models.Review.id == review_id, models.Review.is_deleted == False)
+        .options(selectinload(models.Review.user))
     )
+
+    review = result.scalar_one_or_none()
 
     if not review:
         raise HTTPException(
@@ -33,17 +38,19 @@ def get_review(review_id: int = Path(gt=0), db: Session = Depends(get_db)):
     response_model=schemas.ReviewResponse,
     status_code=status.HTTP_200_OK,
 )
-def patch_review(
+async def patch_review(
     payload: schemas.ReviewUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     review_id: int = Path(gt=0),
     current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
-    review = (
-        db.query(models.Review)
+    result = await db.execute(
+        select(models.Review)
         .filter(models.Review.id == review_id, models.Review.is_deleted == False)
-        .first()
+        .options(selectinload(models.Review.user))
     )
+
+    review = result.scalar_one_or_none()
 
     if not review:
         raise HTTPException(
@@ -57,23 +64,25 @@ def patch_review(
     for key, value in updated_data.items():
         setattr(review, key, value)
 
-    db.commit()
-    db.refresh(review)
+    await db.commit()
+    await db.refresh(review)
 
     return review
 
 
 @router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_review(
+async def delete_review(
     review_id: int = Path(gt=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: schemas.CurrentUser = Depends(get_current_user),
 ):
-    review = (
-        db.query(models.Review)
-        .filter(models.Review.id == review_id, models.Review.is_deleted == False)
-        .first()
+    result = await db.execute(
+        select(models.Review).filter(
+            models.Review.id == review_id, models.Review.is_deleted == False
+        )
     )
+
+    review = result.scalar_one_or_none()
 
     if not review:
         raise HTTPException(
@@ -83,4 +92,4 @@ def delete_review(
     check_owner_or_admin(review.user_id, current_user)
 
     review.is_deleted = True
-    db.commit()
+    await db.commit()

@@ -24,12 +24,18 @@ This project demonstrates real-world backend engineering concepts including auth
 ## 🏗 Tech Stack
 
 * **Backend:** FastAPI
-* **ORM:** SQLAlchemy
-* **Database:** SQLite
+* **ORM:** SQLAlchemy (async)
+* **Database:** SQLite (aiosqlite)
 * **Auth:** JWT
 * **Validation:** Pydantic
 * **Python:** 3.10.11
 
+---
+
+## ⚡ Async Implementation
+- AsyncSession for DB operations
+- All queries use `await db.execute()`
+- Fully async backend
 ---
 
 ## 📡 API Endpoints
