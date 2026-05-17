@@ -215,20 +215,20 @@ Project follows a simple flat structure with minimal folder nesting for ease of 
 
 ## ▶️ Run Locally
 
-```bash id="2n8m4z"
+> This project uses 'uv' for dependency and environment management.
+
+```bash
 git clone https://github.com/Rishabh-Jain21/FASTAPI-BOOK-API.git
 cd FASTAPI-BOOK-API
 
-python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate (Mac/Linux)
-
-pip install -r requirements.txt
+# Install dependencies
+uv sync
 
 # Create .env file
 echo SECRET_KEY=your_secret_key > .env
 
-uvicorn main:app --reload
+# Run the FastAPI server
+uv run uvicorn main:app --reload
 ```
 
 ---
