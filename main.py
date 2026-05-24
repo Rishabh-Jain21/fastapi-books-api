@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from fastapi import Depends, FastAPI
-from database import get_db, Base, engine
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import configure_mappers
+
+from database import Base, engine, get_db
 from routers import books, reviews, users
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Startup
+    configure_mappers()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

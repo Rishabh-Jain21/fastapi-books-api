@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
-from sqlalchemy.orm import selectinload
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
+from sqlalchemy.orm import selectinload
+
 import models
 import schemas
 from auth import get_current_user, require_role
-from sqlalchemy import func, select
+from database import get_db
 
 router = APIRouter(prefix="/books", tags=["Books"])
 ALLOWED_SORT_FIELDS = {"title", "author", "year", "created_at"}
@@ -34,11 +35,11 @@ async def get_books(
             func.count(models.Review.id).label("review_count"),
             func.coalesce(func.avg(models.Review.rating), 0).label("average_rating"),
         )
-        .filter(models.Book.is_deleted == False)
+        .filter(models.Book.is_deleted.is_(False))
         .outerjoin(
             models.Review,
             (models.Review.book_id == models.Book.id)
-            & (models.Review.is_deleted == False),
+            & (models.Review.is_deleted.is_(False)),
         )
         .group_by(models.Book.id)
     )
@@ -97,11 +98,11 @@ async def get_book(book_id: int = Path(gt=0), db: AsyncSession = Depends(get_db)
             func.count(models.Review.id).label("review_count"),
             func.coalesce(func.avg(models.Review.rating), 0).label("average_rating"),
         )
-        .filter(models.Book.is_deleted == False, models.Book.id == book_id)
+        .filter(models.Book.is_deleted.is_(False), models.Book.id == book_id)
         .outerjoin(
             models.Review,
             (models.Review.book_id == models.Book.id)
-            & (models.Review.is_deleted == False),
+            & (models.Review.is_deleted.is_(False)),
         )
         .group_by(models.Book.id)
     )
@@ -267,7 +268,7 @@ async def get_book_reviews(
         )
 
     review_query = select(models.Review).filter(
-        (models.Review.book_id == book_id) & (models.Review.is_deleted == False)
+        (models.Review.book_id == book_id) & (models.Review.is_deleted.is_(False))
     )
 
     if rating is not None:

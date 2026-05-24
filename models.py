@@ -1,6 +1,8 @@
 from __future__ import annotations
+
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, Boolean, ForeignKey
+
 from database import Base
 
 
@@ -51,4 +53,4 @@ class Review(Base):
     )
 
     book: Mapped[Book] = relationship("Book", back_populates="reviews")
-    user: Mapped["User"] = relationship("User", back_populates="reviews")
+    user: Mapped[User] = relationship("User", back_populates="reviews")

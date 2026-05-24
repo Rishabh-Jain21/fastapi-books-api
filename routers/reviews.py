@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
+from sqlalchemy.orm import selectinload
+
 import models
 import schemas
-from auth import get_current_user, check_owner_or_admin
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from auth import check_owner_or_admin, get_current_user
+from database import get_db
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
@@ -19,7 +20,7 @@ async def get_review(review_id: int = Path(gt=0), db: AsyncSession = Depends(get
 
     result = await db.execute(
         select(models.Review)
-        .where(models.Review.id == review_id, models.Review.is_deleted == False)
+        .where(models.Review.id == review_id, models.Review.is_deleted.is_(False))
         .options(selectinload(models.Review.user))
     )
 
@@ -46,7 +47,7 @@ async def patch_review(
 ):
     result = await db.execute(
         select(models.Review)
-        .filter(models.Review.id == review_id, models.Review.is_deleted == False)
+        .filter(models.Review.id == review_id, models.Review.is_deleted.is_(False))
         .options(selectinload(models.Review.user))
     )
 
@@ -78,7 +79,7 @@ async def delete_review(
 ):
     result = await db.execute(
         select(models.Review).filter(
-            models.Review.id == review_id, models.Review.is_deleted == False
+            models.Review.id == review_id, models.Review.is_deleted.is_(False)
         )
     )
 

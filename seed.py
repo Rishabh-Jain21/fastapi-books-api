@@ -1,10 +1,11 @@
-import random
 import asyncio
+import random
 
 from faker import Faker
-from database import AsyncSessionLocal, engine
+
 import models
 from auth import hash_password
+from database import AsyncSessionLocal, engine
 
 
 async def create_tables():

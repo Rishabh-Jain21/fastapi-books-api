@@ -1,11 +1,11 @@
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
-from passlib.context import CryptContext
-from datetime import timedelta, datetime, timezone
-from config import settings
-from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from config import settings
 from schemas import CurrentUser
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -27,7 +27,11 @@ def create_access_token(
     role: str,
     expires_minutes: int,
 ):
-    encode = {"sub": username, "user_id": user_id, "role": role}
+    encode: dict[str, str | int | datetime] = {
+        "sub": username,
+        "user_id": user_id,
+        "role": role,
+    }
     expires = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
     encode.update({"exp": expires})
     return jwt.encode(
@@ -37,7 +41,7 @@ def create_access_token(
     )
 
 
-def get_current_user(token: str = Depends(oauth_bearer)) -> Optional[CurrentUser]:
+def get_current_user(token: str = Depends(oauth_bearer)) -> CurrentUser | None:
     try:
         payload = jwt.decode(token, key=settings.secret_key.get_secret_value())
         username: str | None = payload.get("sub")
@@ -50,11 +54,11 @@ def get_current_user(token: str = Depends(oauth_bearer)) -> Optional[CurrentUser
             )
         return CurrentUser(username=username, user_id=user_id, role=user_role)
 
-    except JWTError:
+    except JWTError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate Credentials",
-        )
+        ) from err
 
 
 def require_role(*roles: str):
