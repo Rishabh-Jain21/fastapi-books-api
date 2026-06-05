@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models
 import schemas
 from auth import create_access_token, hash_password, verify_password
-from config import settings
+from config import get_settings
 from database import get_db
 
 router = APIRouter(prefix="/users", tags=["Users"])
+settings = get_settings()  # type: ignore
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

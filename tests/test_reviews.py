@@ -150,7 +150,6 @@ async def test_get_review_success(client: AsyncClient, db_session: AsyncSession)
 
     book_id = response.json()["id"]
 
-
     # Create a review for the book
     response = await client.post(
         f"/books/{book_id}/reviews",
@@ -170,7 +169,6 @@ async def test_get_review_success(client: AsyncClient, db_session: AsyncSession)
     assert "rating" in data
 
 
-
 @pytest.mark.anyio
 async def test_delete_review_success(client: AsyncClient, db_session: AsyncSession):
     await create_admin_user(db_session)
@@ -186,7 +184,6 @@ async def test_delete_review_success(client: AsyncClient, db_session: AsyncSessi
     )
 
     book_id = response.json()["id"]
-
 
     # Create a review for the book
     response = await client.post(

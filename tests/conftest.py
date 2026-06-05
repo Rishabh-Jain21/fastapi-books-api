@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from database import Base, get_db
-from main import app
+from main import create_app
 
 # Register anyio with pytest so async fixtures and tests run correctly.
 pytest_plugins = ["anyio"]
@@ -88,9 +88,32 @@ async def db_session(
 async def client(
     db_session: AsyncSession,
 ) -> AsyncGenerator[AsyncClient]:
+    async def override_get_db():
+        yield db_session
+
+    app = create_app()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def rate_limited_client(
+    db_session: AsyncSession, monkeypatch
+) -> AsyncGenerator[AsyncClient]:
+    monkeypatch.setenv("ENABLE_RATE_LIMITING", "true")
 
     async def override_get_db():
         yield db_session
+
+    app = create_app()
 
     app.dependency_overrides[get_db] = override_get_db
 

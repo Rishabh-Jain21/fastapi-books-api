@@ -5,12 +5,14 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from config import settings
+from config import get_settings
 from schemas import CurrentUser
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 oauth_bearer = OAuth2PasswordBearer(tokenUrl="/users/token")
+
+settings = get_settings()  # type: ignore
 
 
 def hash_password(password: str):
