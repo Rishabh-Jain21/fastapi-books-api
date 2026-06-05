@@ -2,7 +2,7 @@
 
 A production-style REST API for managing books and reviews, built using **FastAPI** and **SQLAlchemy**.
 
-This project demonstrates real-world backend engineering concepts including authentication, authorization, relational data modeling, and query optimization.
+This project demonstrates real-world backend engineering concepts including authentication, authorization, relational data modeling, testing, middleware implementation, and query optimization.
 
 ---
 
@@ -17,6 +17,8 @@ This project demonstrates real-world backend engineering concepts including auth
 * 🔗 One-to-many relationship (Books → Reviews)
 * ⭐ Aggregated review statistics (average rating, review count)
 * ⚡ Optimized queries using joins and aggregation (avoids N+1 problem)
+* 🚦 Token Bucket Rate Limiting Middleware
+* 🧪 Automated API testing with Pytest and HTTPX
 * 🌱 Seed script using Faker for realistic test data
 
 ---
@@ -24,32 +26,101 @@ This project demonstrates real-world backend engineering concepts including auth
 ## 🏗 Tech Stack
 
 * **Backend:** FastAPI
-* **ORM:** SQLAlchemy (async)
+* **ORM:** SQLAlchemy (Async)
 * **Database:** SQLite (aiosqlite)
-* **Auth:** JWT
+* **Authentication:** JWT
 * **Validation:** Pydantic
+* **Testing:** Pytest, HTTPX
 * **Python:** 3.10.11
 
 ---
 
 ## ⚡ Async Implementation
-- AsyncSession for DB operations
-- All queries use `await db.execute()`
-- Fully async backend
+
+* AsyncSession for database operations
+* Async route handlers
+* Async SQLAlchemy queries using `await db.execute()`
+* Async integration tests using HTTPX AsyncClient
+
+---
+
+## 🚦 Rate Limiting
+
+The API includes a custom Token Bucket rate limiter implemented as FastAPI middleware.
+
+### Behavior
+
+* Each client IP gets its own token bucket
+* Bucket capacity: 10 requests
+* Refill rate: 1 token per second
+* Requests exceeding the limit receive HTTP 429
+
+### Example Response
+
+```json
+{
+  "detail": "Too Many Requests"
+}
+```
+
+### Configuration
+
+Rate limiting can be enabled or disabled using an environment variable:
+
+```env
+ENABLE_RATE_LIMITING=true
+```
+
+This allows unrestricted access during development while enabling protection in production environments.
+
+---
+
+## 🧪 Testing
+
+The project includes automated tests covering:
+
+### API Tests
+
+* Book CRUD operations
+* Review operations
+* Authentication flows
+* Authorization checks
+* Validation scenarios
+
+### Middleware Tests
+
+* Requests under the limit succeed
+* Exceeding the limit returns HTTP 429
+* Token bucket refills over time
+* Independent rate limiting per client
+
+### Test Stack
+
+* Pytest
+* HTTPX AsyncClient
+* In-memory SQLite database
+* Dependency overrides for isolation
+
+Run tests:
+
+```bash
+pytest
+```
+
 ---
 
 ## 📡 API Endpoints
 
 ### 📚 Books
 
-| Method | Endpoint      | Access                 | Description                                         |
-| ------ | ------------- | ---------------------- | --------------------------------------------------- |
-| GET    | `/books`      | Public / Authenticated | List books (pagination, filtering, search, sorting) |
-| GET    | `/books/{id}` | Public / Authenticated | Get book details                                    |
-| POST   | `/books`      | Admin only             | Create a book                                       |
-| PUT    | `/books/{id}` | Admin only             | Update book                                         |
-| PATCH  | `/books/{id}` | Admin only             | Partial update                                      |
-| DELETE | `/books/{id}` | Admin only             | Soft delete                                         |
+| Method | Endpoint      | Access                 | Description                                                |
+| ------ | ------------- | ---------------------- | ---------------------------------------------------------- |
+| GET    | `/books`      | Public / Authenticated | List books with pagination, filtering, search, and sorting |
+| GET    | `/books/{id}` | Public / Authenticated | Get book details                                           |
+| POST   | `/books`      | Admin Only             | Create a book                                              |
+| PUT    | `/books/{id}` | Admin Only             | Update a book                                              |
+| PATCH  | `/books/{id}` | Admin Only             | Partial update                                             |
+| DELETE | `/books/{id}` | Admin Only             | Soft delete a book                                         |
 
 ---
 
@@ -57,25 +128,25 @@ This project demonstrates real-world backend engineering concepts including auth
 
 | Method | Endpoint              | Access                 | Description   |
 | ------ | --------------------- | ---------------------- | ------------- |
-| POST   | `/books/{id}/reviews` | Authenticated users    | Add review    |
-| GET    | `/books/{id}/reviews` | Public / Authenticated | Get reviews   |
+| POST   | `/books/{id}/reviews` | Authenticated Users    | Add review    |
+| GET    | `/books/{id}/reviews` | Public / Authenticated | List reviews  |
 | DELETE | `/reviews/{id}`       | Owner or Admin         | Delete review |
 
 ---
 
 ### 🔐 Authentication
 
-| Method | Endpoint | Description             |
-| ------ | -------- | ----------------------- |
-| POST   | `/token` | Login and get JWT token |
+| Method | Endpoint | Description                        |
+| ------ | -------- | ---------------------------------- |
+| POST   | `/token` | Login and receive JWT access token |
 
 ---
 
 ## 📊 Sample Response
 
-### 🔹 GET `/books`
+### GET `/books`
 
-```json id="1q0b5g"
+```json
 [
   {
     "id": 1,
@@ -87,11 +158,9 @@ This project demonstrates real-world backend engineering concepts including auth
 ]
 ```
 
----
+### GET `/books/{id}/reviews`
 
-### 🔹 GET `/books/{id}/reviews`
-
-```json id="9u0rbh"
+```json
 {
   "data": [
     {
@@ -114,19 +183,20 @@ This project demonstrates real-world backend engineering concepts including auth
 
 ---
 
-## 🌱 Seed Data (Faker)
+## 🌱 Seed Data
 
-The project includes a seed script that uses the **Faker** library to generate realistic test data.
+The project includes a Faker-powered seed script.
 
-### 📦 Generates:
+Generated data:
 
+* 10 Users
 * 10 Books
-* 10 Users *(excluding admin)*
-* 25 Reviews across books
+* 25 Reviews
+* 1 Admin User
 
-### ▶️ Run:
+Run:
 
-```bash id="n9i2mh"
+```bash
 python seed.py
 ```
 
@@ -141,93 +211,98 @@ python seed.py
 
 ### Rules
 
-* Only **admins** can create, update, or delete books
-* Users can **only view books**
-* Users can **create and manage their own reviews**
-* Admins have full access
+* Admins can create, update, and delete books
+* Users can view books
+* Users can create and manage their own reviews
+* Admins have full access to all resources
 
 ---
 
 ## 🧠 Architecture Decisions
 
-### 1. Role-Based Access for Books
+### Role-Based Access Control
 
-* Write operations restricted to admin
-* Prevents unauthorized data modification
-* Reflects real-world systems (controlled content management)
+Book management operations are restricted to administrators to prevent unauthorized modifications.
 
----
+### Ownership-Based Authorization
 
-### 2. Separate Review Endpoint
+Review deletion is restricted to the review owner or an administrator.
 
-* `/books/{id}/reviews` used instead of embedding
-* Supports pagination, filtering, scalability
+### Separate Review Resources
 
----
+Reviews are exposed through dedicated endpoints to support pagination and scalability.
 
-### 3. Aggregation via SQL
+### Query Optimization
 
-* Used `COUNT` and `AVG` with `GROUP BY`
-* Avoided hidden ORM computations
-* Ensures performance and transparency
+Aggregations use SQL functions such as `COUNT` and `AVG` with `GROUP BY` to avoid N+1 query problems.
 
----
+### Soft Delete Strategy
 
-### 4. Projection Queries
+Resources are marked as deleted instead of being permanently removed.
 
-* Selected only required fields
-* Reduced payload size and improved performance
+### Middleware-Based Rate Limiting
 
----
+Request throttling is implemented at the middleware layer, keeping rate limiting concerns separate from business logic.
 
-### 5. Soft Delete Strategy
+### Environment-Driven Configuration
 
-* Used `is_deleted` flag
-* Prevents permanent data loss
-
----
-
-### 6. Auth vs Authorization Separation
-
-* JWT handles authentication
-* RBAC + ownership handle authorization
+Application behavior such as rate limiting can be controlled through environment variables without code changes.
 
 ---
 
 ## 📂 Project Structure
 
-Project follows a simple flat structure with minimal folder nesting for ease of learning.
-
-```bash id="dyxfxd"
+```text
 .
-├── routers/           # All API route modules (books, reviews, auth, etc.)
-├── main.py            # FastAPI app entry point
-├── models.py          # SQLAlchemy models
-├── schemas.py         # Pydantic schemas
-├── database.py        # DB connection/session
-├── auth.py            # Auth, RBAC, utilities
-├── seed.py            # Faker-based seed script
+├── routers/
+│   ├── books.py
+│   ├── reviews.py
+│   └── users.py
+├── tests/
+│   ├── conftest.py
+│   ├── test_books.py
+│   ├── test_sync.py (only for learning purpose to see how to test sync database and sync endpoints)
+│   ├── test_reviews.py
+│   ├── test_auth.py
+│   └── test_middleware.py
+├── main.py
+├── models.py
+├── schemas.py
+├── database.py
+├── middleware.py
+├── auth.py
+├── config.py
+├── seed.py
 ├── requirements.txt
 ├── .env
+└── README.md
 ```
 
 ---
 
 ## ▶️ Run Locally
 
-> This project uses 'uv' for dependency and environment management.
+This project uses **uv** for dependency and environment management.
 
 ```bash
 git clone https://github.com/Rishabh-Jain21/FASTAPI-BOOK-API.git
+
 cd FASTAPI-BOOK-API
 
-# Install dependencies
 uv sync
+```
 
-# Create .env file
-echo SECRET_KEY=your_secret_key > .env
+Create a `.env` file:
 
-# Run the FastAPI server
+```env
+SECRET_KEY=your_secret_key
+DATABASE_URL=sqlite+aiosqlite:///books.db
+ENABLE_RATE_LIMITING=false
+```
+
+Start the application:
+
+```bash
 uv run uvicorn main:app --reload
 ```
 
@@ -235,21 +310,29 @@ uv run uvicorn main:app --reload
 
 ## 🧠 Key Learnings
 
-* Designed secure APIs with RBAC and ownership checks
-* Built efficient queries using aggregation
-* Avoided N+1 issues
-* Structured scalable endpoints
-* Applied clean backend architecture principles
+* Building async APIs with FastAPI and SQLAlchemy
+* JWT authentication and authorization
+* Role-based and ownership-based access control
+* Query optimization using joins and aggregations
+* Soft delete implementation
+* Middleware development
+* Token Bucket rate limiting algorithms
+* API testing with Pytest and HTTPX
+* Dependency overrides and isolated test databases
+* Environment-driven application configuration
 
 ---
 
 ## 🚀 Future Improvements
 
 * Refresh tokens
-* Redis caching
-* Automated tests
+* Redis-backed rate limiting
 * Dockerization
-* Deployment
+* CI/CD pipeline
+* PostgreSQL support
+* API versioning
+* OpenTelemetry observability
+* Caching layer
 
 ---
 
